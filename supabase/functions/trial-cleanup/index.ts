@@ -200,10 +200,31 @@ Deno.serve(async (req) => {
       try {
         console.log(`Processing deletion for user: ${userToDelete.email}`);
 
-        // 🚨 CRITICAL FIX: DO NOT DELETE AXIESTUDIO ACCOUNTS
-        // AxieStudio accounts should be preserved even when main account is deleted
+        // 🚨 CRITICAL: DEACTIVATE AXIESTUDIO ACCOUNT WHEN TRIAL EXPIRES
+        try {
+          console.log(`🔄 Deactivating AxieStudio account for expired trial: ${userToDelete.email}`);
+
+          // Call the lifecycle manager to deactivate AxieStudio account
+          const { error: axieError } = await supabase.functions.invoke('manage-axiestudio-lifecycle', {
+            body: {
+              action: 'deactivate_on_trial_end',
+              user_id: userToDelete.user_id,
+              reason: 'trial_expired'
+            }
+          });
+
+          if (axieError) {
+            console.error('❌ Failed to deactivate AxieStudio account:', axieError);
+          } else {
+            console.log('✅ AxieStudio account deactivated (active = false) for expired trial');
+          }
+        } catch (axieError) {
+          console.error('❌ Error deactivating AxieStudio account:', axieError);
+        }
+
+        // 🚨 PRESERVE AXIESTUDIO DATA: Do not delete AxieStudio accounts
         // Users can resubscribe and regain access to their existing AxieStudio data
-        console.log(`⚠️ PRESERVING AxieStudio account for ${userToDelete.email} - data will be retained`);
+        console.log(`⚠️ AxieStudio account deactivated but data preserved for ${userToDelete.email}`);
 
         // Only delete from Supabase auth (this will cascade to other tables)
         const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userToDelete.user_id);

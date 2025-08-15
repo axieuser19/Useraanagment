@@ -18,12 +18,17 @@ export function ProductCard({ product, isCurrentPlan = false }: ProductCardProps
 
   const cardColor = isStandardProduct ? 'border-green-600' :
                    isLimitedTimeProduct ? 'border-purple-600' : 'border-black';
-  const shadowColor = isStandardProduct ? 'rgba(34,197,94,1)' :
-                     isLimitedTimeProduct ? 'rgba(147,51,234,1)' : 'rgba(0,0,0,1)';
   const iconBg = isStandardProduct ? 'bg-green-600' :
                 isLimitedTimeProduct ? 'bg-purple-600' : 'bg-black';
   const buttonBg = isStandardProduct ? 'bg-green-600 hover:bg-green-700' :
                   isLimitedTimeProduct ? 'bg-purple-600 hover:bg-purple-700' : 'bg-black hover:bg-gray-800';
+
+  // 🔧 FIX: Use proper CSS classes instead of template literals to fix build warnings
+  const shadowClasses = isStandardProduct
+    ? 'shadow-[12px_12px_0px_0px_rgba(34,197,94,1)] hover:shadow-[16px_16px_0px_0px_rgba(34,197,94,1)]'
+    : isLimitedTimeProduct
+    ? 'shadow-[12px_12px_0px_0px_rgba(147,51,234,1)] hover:shadow-[16px_16px_0px_0px_rgba(147,51,234,1)]'
+    : 'shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:shadow-[16px_16px_0px_0px_rgba(0,0,0,1)]';
 
   const handlePurchase = async () => {
     // Handle standard product differently
@@ -77,10 +82,8 @@ export function ProductCard({ product, isCurrentPlan = false }: ProductCardProps
   };
 
   return (
-    <div className={`relative bg-white border-4 ${cardColor} rounded-none shadow-[12px_12px_0px_0px_${shadowColor}] transition-all duration-300 hover:shadow-[16px_16px_0px_0px_${shadowColor}] hover:translate-x-[-4px] hover:translate-y-[-4px] ${
-      isCurrentPlan
-        ? isStandardProduct ? 'bg-green-50' : 'bg-green-50'
-        : 'hover:bg-gray-50'
+    <div className={`relative bg-white border-4 ${cardColor} rounded-none ${shadowClasses} transition-all duration-300 hover:translate-x-[-4px] hover:translate-y-[-4px] ${
+      isCurrentPlan ? 'bg-green-50' : 'hover:bg-gray-50'
     }`}>
       {isStandardProduct && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">

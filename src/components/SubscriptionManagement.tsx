@@ -48,8 +48,11 @@ export function SubscriptionManagement() {
       setShowCancelModal(false);
       refetch(); // Refresh subscription data
 
-      // Refresh the page to update all components
-      window.location.reload();
+      // 🔧 FIX: Use state management instead of hard reload
+      // Trigger global state refresh
+      window.dispatchEvent(new CustomEvent('userSubscriptionChanged', {
+        detail: { action: 'cancelled', timestamp: Date.now() }
+      }));
     } catch (err) {
       console.error('❌ Error canceling subscription:', err);
       setError(err instanceof Error ? err.message : 'Failed to cancel subscription');
@@ -143,8 +146,8 @@ export function SubscriptionManagement() {
     try {
       refetch();
       console.log('✅ Subscription status refreshed');
-      // Also refresh the page to update all components
-      setTimeout(() => window.location.reload(), 1000);
+      // 🔧 FIX: Use state management instead of hard reload
+      window.dispatchEvent(new CustomEvent('forceRefreshAllData'));
     } catch (err) {
       console.error('❌ Error refreshing subscription:', err);
     } finally {

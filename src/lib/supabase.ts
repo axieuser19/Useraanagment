@@ -1,16 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Fallback values for development (remove in production)
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Debug logging to see what's actually loaded
-console.log('🔍 Environment Debug:', {
-  supabaseUrl: supabaseUrl ? '✅ Loaded' : '❌ Missing',
-  supabaseAnonKey: supabaseAnonKey ? '✅ Loaded' : '❌ Missing',
-  fromEnv: !!import.meta.env.VITE_SUPABASE_URL,
-  allEnvVars: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
-});
+// 🔒 VALIDATION: Ensure required environment variables are present
+if (!supabaseUrl) {
+  throw new Error('Missing required environment variable: VITE_SUPABASE_URL');
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('Missing required environment variable: VITE_SUPABASE_ANON_KEY');
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Missing environment variables:', {
