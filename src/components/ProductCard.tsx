@@ -13,7 +13,7 @@ export function ProductCard({ product, isCurrentPlan = false }: ProductCardProps
   const [loading, setLoading] = useState(false);
   const { refetch: refetchAccess } = useUserAccess();
 
-  const isStandardProduct = product.id === 'standard_product' || product.name === 'Standard';
+  const isStandardProduct = false; // Standard plan hidden
   const isLimitedTimeProduct = product.name === 'Limited Time';
 
   const cardColor = isStandardProduct ? 'border-green-600' :
