@@ -40,9 +40,9 @@ Deno.serve(async (req) => {
   try {
     // Get environment variables
     console.log('🔧 Loading environment variables...');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://othsnnoncnerjogvwjgc.supabase.co';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const axiestudioUrl = Deno.env.get('AXIESTUDIO_APP_URL') || 'https://flow.axiestudio.se';
+    const axiestudioUrl = Deno.env.get('AXIESTUDIO_APP_URL');
 
     console.log('🔍 Environment check:', {
       hasSupabaseUrl: !!supabaseUrl,
@@ -50,9 +50,9 @@ Deno.serve(async (req) => {
       axiestudioUrl: axiestudioUrl
     });
 
-    if (!supabaseServiceKey) {
-      console.error('❌ Missing Supabase service key');
-      throw new Error('Missing Supabase service key');
+    if (!supabaseUrl || !supabaseServiceKey || !axiestudioUrl) {
+      console.error('❌ Missing required environment variables');
+      throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AXIESTUDIO_APP_URL');
     }
 
     // Parse request body

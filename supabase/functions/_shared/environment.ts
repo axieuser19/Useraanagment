@@ -26,13 +26,13 @@ export async function getEnvironmentConfig(): Promise<EnvironmentConfig> {
 
     // 🚀 PRIORITY 1: Get critical variables from Edge Function Secrets
     const edgeSecrets: EnvironmentConfig = {
-      SUPABASE_URL: Deno.env.get('SUPABASE_URL') || 'https://othsnnoncnerjogvwjgc.supabase.co',
+      SUPABASE_URL: Deno.env.get('SUPABASE_URL') || '',
       SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
       SUPABASE_ANON_KEY: Deno.env.get('SUPABASE_ANON_KEY') || '',
       SUPABASE_DB_URL: Deno.env.get('SUPABASE_DB_URL') || '',
       STRIPE_SECRET_KEY: Deno.env.get('STRIPE_SECRET_KEY') || '',
       STRIPE_WEBHOOK_SECRET: Deno.env.get('STRIPE_WEBHOOK_SECRET') || '',
-      AXIESTUDIO_APP_URL: Deno.env.get('AXIESTUDIO_APP_URL') || 'https://flow.axiestudio.se',
+      AXIESTUDIO_APP_URL: Deno.env.get('AXIESTUDIO_APP_URL') || '',
       AXIESTUDIO_USERNAME: Deno.env.get('AXIESTUDIO_USERNAME') || '',
       AXIESTUDIO_PASSWORD: Deno.env.get('AXIESTUDIO_PASSWORD') || '',
       AXIESTUDIO_API_KEY: Deno.env.get('AXIESTUDIO_API_KEY') || ''
@@ -82,8 +82,8 @@ export async function getEnvironmentConfig(): Promise<EnvironmentConfig> {
 
     // 🚀 EMERGENCY FALLBACK: Minimal config with hardcoded values
     const emergencyConfig: EnvironmentConfig = {
-      SUPABASE_URL: 'https://othsnnoncnerjogvwjgc.supabase.co',
-      AXIESTUDIO_APP_URL: 'https://flow.axiestudio.se',
+      SUPABASE_URL: '',
+      AXIESTUDIO_APP_URL: '',
       SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
       SUPABASE_ANON_KEY: Deno.env.get('SUPABASE_ANON_KEY') || '',
       STRIPE_SECRET_KEY: Deno.env.get('STRIPE_SECRET_KEY') || '',

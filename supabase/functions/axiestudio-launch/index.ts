@@ -54,9 +54,9 @@ export default async function handler(req: Request): Promise<Response> {
     // Get environment variables directly
     console.log('🔧 Loading environment variables...');
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://othsnnoncnerjogvwjgc.supabase.co';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const axiestudioUrl = Deno.env.get('AXIESTUDIO_APP_URL') || 'https://flow.axiestudio.se';
+    const axiestudioUrl = Deno.env.get('AXIESTUDIO_APP_URL');
     const axiestudioUsername = Deno.env.get('AXIESTUDIO_USERNAME');
     const axiestudioPassword = Deno.env.get('AXIESTUDIO_PASSWORD');
 
@@ -69,15 +69,11 @@ export default async function handler(req: Request): Promise<Response> {
       axiestudioUrl: axiestudioUrl
     });
 
-    if (!supabaseServiceKey) {
-      console.error('❌ Missing Supabase service key');
-      throw new Error('Missing Supabase service key');
+    if (!supabaseUrl || !supabaseServiceKey || !axiestudioUrl) {
+      console.error('❌ Missing required environment variables');
+      throw new Error('Missing required environment variables');
     }
 
-    if (!axiestudioUrl) {
-      console.error('❌ Missing AxieStudio URL');
-      throw new Error('Missing AxieStudio URL configuration');
-    }
 
     // Parse request body
     console.log('📥 Parsing request body...');

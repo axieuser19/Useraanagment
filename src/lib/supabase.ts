@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// 🔒 SECURITY: Environment variables are required - no fallbacks in production
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
