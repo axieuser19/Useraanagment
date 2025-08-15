@@ -141,8 +141,10 @@ export function StartTrialButton({ onTrialStarted, className = '' }: StartTrialB
         onTrialStarted();
       }
 
-      // Refresh the page to update all components
-      window.location.reload();
+      // 🔧 FIX: Use state management instead of hard reload
+      window.dispatchEvent(new CustomEvent('userSubscriptionChanged', {
+        detail: { action: 'trial_started', timestamp: Date.now() }
+      }));
 
     } catch (error: any) {
       console.error('❌ Failed to start trial:', error);

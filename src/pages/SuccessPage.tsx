@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { CheckCircle, ArrowRight, Home } from 'lucide-react';
 
 export function SuccessPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const sessionId = searchParams.get('session_id');
   const [countdown, setCountdown] = useState(10);
 
@@ -12,7 +13,7 @@ export function SuccessPage() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = '/dashboard';
+          navigate('/dashboard', { replace: true });
           return 0;
         }
         return prev - 1;

@@ -467,6 +467,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
       // 🚨 IMPORTANT: Do NOT deactivate AxieStudio here - it should remain active until period ends
       // AxieStudio deactivation will happen during the trial-cleanup process after period ends
+      console.log(`📋 AxieStudio account will remain ACTIVE until subscription period ends: ${subscriptionEndDate.toISOString()}`);
     }
 
     // Handle reactivation
@@ -485,6 +486,27 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
         console.error('❌ Error updating trial status:', trialError);
       } else {
         console.log('✅ Trial status updated to converted_to_paid');
+      }
+
+      // 🎯 ACTIVATE AXIESTUDIO ACCOUNT when subscription becomes active
+      try {
+        console.log('🔄 Activating AxieStudio account for active subscription...');
+
+        const { error: axieError } = await supabase.functions.invoke('manage-axiestudio-lifecycle', {
+          body: {
+            action: 'activate_on_subscription',
+            user_id: customerData.user_id,
+            reason: 'subscription_reactivated'
+          }
+        });
+
+        if (axieError) {
+          console.warn('⚠️ Could not activate AxieStudio account:', axieError);
+        } else {
+          console.log('✅ AxieStudio account activated (active = true)');
+        }
+      } catch (axieError) {
+        console.warn('⚠️ AxieStudio activation failed:', axieError);
       }
     }
 
@@ -604,6 +626,27 @@ async function handlePaymentSuccess(invoice: Stripe.Invoice) {
         console.log('✅ User access restored after successful payment');
       }
 
+      // 🎯 ACTIVATE AXIESTUDIO ACCOUNT when payment succeeds
+      try {
+        console.log('🔄 Activating AxieStudio account for successful payment...');
+
+        const { error: axieError } = await supabase.functions.invoke('manage-axiestudio-lifecycle', {
+          body: {
+            action: 'activate_on_subscription',
+            user_id: customerData.user_id,
+            reason: 'payment_successful'
+          }
+        });
+
+        if (axieError) {
+          console.warn('⚠️ Could not activate AxieStudio account:', axieError);
+        } else {
+          console.log('✅ AxieStudio account activated (active = true)');
+        }
+      } catch (axieError) {
+        console.warn('⚠️ AxieStudio activation failed:', axieError);
+      }
+
       // Run protection functions
       try {
         await supabase.rpc('protect_paying_customers');
@@ -635,6 +678,39 @@ async function handleSubscriptionDeletion(subscription: Stripe.Subscription) {
       console.error('❌ Error marking subscription as deleted:', deleteError);
     } else {
       console.log('✅ Subscription marked as deleted in database');
+    }
+
+    // 🎯 CRITICAL: DEACTIVATE AXIESTUDIO ACCOUNT WHEN SUBSCRIPTION ENDS
+    try {
+      // Get customer data to find user_id
+      const { data: customerData } = await supabase
+        .from('stripe_customers')
+        .select('user_id')
+        .eq('customer_id', subscription.customer as string)
+        .single();
+
+      if (customerData?.user_id) {
+        console.log(`🔄 Deactivating AxieStudio account for user: ${customerData.user_id}`);
+
+        // Call the lifecycle manager to deactivate AxieStudio account
+        const { error: axieError } = await supabase.functions.invoke('manage-axiestudio-lifecycle', {
+          body: {
+            action: 'deactivate_on_subscription_end',
+            user_id: customerData.user_id,
+            reason: 'subscription_deleted'
+          }
+        });
+
+        if (axieError) {
+          console.error('❌ Failed to deactivate AxieStudio account:', axieError);
+        } else {
+          console.log('✅ AxieStudio account deactivated (active = false)');
+        }
+      } else {
+        console.warn('⚠️ Could not find user_id for customer:', subscription.customer);
+      }
+    } catch (axieError) {
+      console.error('❌ Error deactivating AxieStudio account:', axieError);
     }
 
   } catch (error) {

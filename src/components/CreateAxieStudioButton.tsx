@@ -119,7 +119,8 @@ export function CreateAxieStudioButton({ className = '', onAccountCreated }: Cre
         },
         body: JSON.stringify({
           action: 'create',
-          password: password
+          password: password,
+          force_active: true // ✅ ALWAYS CREATE WITH ACTIVE = TRUE
         }),
       });
 
