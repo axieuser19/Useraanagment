@@ -39,7 +39,7 @@ export function useSubscription() {
         customer_id: 'cus_admin_' + user.id,
         subscription_id: 'sub_admin_pro_' + user.id,
         subscription_status: 'active',
-        price_id: 'price_1Rv4rDBacFXEnBmNDMrhMqOH', // PRO price ID
+        price_id: import.meta.env.VITE_STRIPE_PRO_PRICE_ID || 'your_stripe_pro_price_id_here',
         current_period_start: Math.floor(Date.now() / 1000),
         current_period_end: Math.floor(Date.now() / 1000) + (100 * 365 * 24 * 60 * 60), // 100 years
         cancel_at_period_end: false,

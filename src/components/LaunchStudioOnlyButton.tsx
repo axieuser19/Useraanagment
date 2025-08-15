@@ -22,7 +22,7 @@ export function LaunchStudioOnlyButton({ className = '' }: LaunchStudioOnlyButto
       if (sessionError || !session) {
         console.error('❌ No active session found');
         // Fallback to manual login
-        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL', 'https://flow.axiestudio.se');
+        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL');
         const loginUrl = `${axiestudioUrl}/login`;
         console.log('🔗 Redirecting to manual login:', loginUrl);
         window.open(loginUrl, '_blank');
@@ -33,7 +33,7 @@ export function LaunchStudioOnlyButton({ className = '' }: LaunchStudioOnlyButto
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         console.error('❌ Could not get user info');
-        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL', 'https://flow.axiestudio.se');
+        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL');
         const loginUrl = `${axiestudioUrl}/login`;
         window.open(loginUrl, '_blank');
         return;
@@ -53,7 +53,7 @@ export function LaunchStudioOnlyButton({ className = '' }: LaunchStudioOnlyButto
       if (error) {
         console.error('❌ Launch API failed:', error);
         // Fallback to manual login
-        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL', 'https://flow.axiestudio.se');
+        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL');
         const loginUrl = `${axiestudioUrl}/login`;
         console.log('🔗 Fallback to manual login:', loginUrl);
         window.open(loginUrl, '_blank');
@@ -68,7 +68,7 @@ export function LaunchStudioOnlyButton({ className = '' }: LaunchStudioOnlyButto
         window.open(data.fallback_url, '_blank');
       } else {
         console.warn('⚠️ Unexpected response, falling back to manual login');
-        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL', 'https://flow.axiestudio.se');
+        const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL');
         const loginUrl = `${axiestudioUrl}/login`;
         console.log('🔗 Fallback to manual login:', loginUrl);
         window.open(loginUrl, '_blank');
@@ -76,7 +76,7 @@ export function LaunchStudioOnlyButton({ className = '' }: LaunchStudioOnlyButto
     } catch (error) {
       console.error('❌ Launch failed:', error);
       // Fallback to manual login
-      const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL', 'https://flow.axiestudio.se');
+      const axiestudioUrl = getConfig('VITE_AXIESTUDIO_APP_URL');
       const loginUrl = `${axiestudioUrl}/login`;
       console.log('🔗 Error fallback to manual login:', loginUrl);
       window.open(loginUrl, '_blank');

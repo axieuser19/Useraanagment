@@ -15,15 +15,15 @@ interface UseEnvironmentReturn {
 
 // 🚀 STATIC CONFIGURATION - Immediate availability with fallbacks
 const STATIC_CONFIG: EnvironmentConfig = {
-  VITE_SUPABASE_URL: 'https://othsnnoncnerjogvwjgc.supabase.co',
-  VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90aHNubm9uY25lcmpvZ3Z3amdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxNTY1NDcsImV4cCI6MjA2NzczMjU0N30.bAYQm2q_LH6xCMXrPsObht6pmFbz966MU-g7v1SRzrE',
-  VITE_STRIPE_PUBLISHABLE_KEY: 'pk_live_51R8NaSBacFXEnBmNctNhCB371L8X2hMUHlwLAmxLKZ0yzGyzZxFmNoUeOwAm7M5NeqgePP2uMRp85xHA0BCA98OX00hdoNhjfd',
-  VITE_STRIPE_PRO_PRICE_ID: 'price_1Rv4rDBacFXEnBmNDMrhMqOH',
-  VITE_STRIPE_PRO_PRODUCT_ID: 'prod_SqmQgEphHNdPVG',
-  VITE_STRIPE_LIMITED_TIME_PRICE_ID: 'price_1RwNgiBacFXEnBmNu1PwJnYK',
-  VITE_STRIPE_LIMITED_TIME_PRODUCT_ID: 'prod_Ss7w3IYMyDloAF',
-  VITE_AXIESTUDIO_APP_URL: 'https://flow.axiestudio.se',
-  VITE_API_BASE_URL: 'https://othsnnoncnerjogvwjgc.supabase.co/rest/v1'
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || '',
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+  VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+  VITE_STRIPE_PRO_PRICE_ID: import.meta.env.VITE_STRIPE_PRO_PRICE_ID || '',
+  VITE_STRIPE_PRO_PRODUCT_ID: import.meta.env.VITE_STRIPE_PRO_PRODUCT_ID || '',
+  VITE_STRIPE_LIMITED_TIME_PRICE_ID: import.meta.env.VITE_STRIPE_LIMITED_TIME_PRICE_ID || '',
+  VITE_STRIPE_LIMITED_TIME_PRODUCT_ID: import.meta.env.VITE_STRIPE_LIMITED_TIME_PRODUCT_ID || '',
+  VITE_AXIESTUDIO_APP_URL: import.meta.env.VITE_AXIESTUDIO_APP_URL || '',
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL || ''
 };
 
 // Cache for environment config
@@ -159,10 +159,10 @@ export async function getEnvironmentConfig(): Promise<EnvironmentConfig> {
     
     // Return fallback config
     return {
-      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://othsnnoncnerjogvwjgc.supabase.co',
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || '',
       VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
       VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-      VITE_AXIESTUDIO_APP_URL: import.meta.env.VITE_AXIESTUDIO_APP_URL || 'https://flow.axiestudio.se'
+      VITE_AXIESTUDIO_APP_URL: import.meta.env.VITE_AXIESTUDIO_APP_URL || ''
     };
   }
 }

@@ -174,7 +174,10 @@ export function useUserAccess() {
         requires_subscription: userAccess.requires_subscription || false,
         can_create_axiestudio_account: userAccess.can_create_axiestudio_account || false,
         // Team subscription detection
-        is_team_subscription: ['price_1RwOhVBacFXEnBmNIeWQ1wQe', 'price_1RwP9cBacFXEnBmNsM3xVLL2'].includes(subscriptionData?.price_id)
+        is_team_subscription: [
+          import.meta.env.VITE_STRIPE_TEAM_PRICE_ID_1 || 'your_stripe_team_price_id_1_here',
+          import.meta.env.VITE_STRIPE_TEAM_PRICE_ID_2 || 'your_stripe_team_price_id_2_here'
+        ].includes(subscriptionData?.price_id)
       };
 
       console.log('🔒 Bulletproof access status verified:', bulletproofAccessStatus);
