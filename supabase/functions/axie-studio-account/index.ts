@@ -116,22 +116,39 @@ async function createAxieStudioUser(email: string, password: string, userId: str
 
     // Step 0.5: Check user's subscription status to determine if account should be active
     console.log(`🔍 Checking user subscription status for: ${userId}`);
-    let shouldBeActive = false;
+    let shouldBeActive = true; // ✅ DEFAULT TO ACTIVE for users with access
 
     try {
-      const { data: userAccess } = await supabase
-        .from('user_access_with_trial_info')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      const { data: userAccess, error: accessError } = await supabase.rpc('get_user_access_level', {
+        p_user_id: userId
+      });
 
-      // Account should be active if user has access (trial or subscription)
-      shouldBeActive = userAccess?.has_access === true;
-      console.log(`📊 User access status: has_access=${userAccess?.has_access}, access_type=${userAccess?.access_type}`);
+      if (accessError) {
+        console.warn(`⚠️ Could not check user access, defaulting to active: ${accessError}`);
+        shouldBeActive = true; // ✅ DEFAULT TO ACTIVE for safety
+      } else if (userAccess && userAccess.length > 0) {
+        const access = userAccess[0];
+        // ✅ FIXED LOGIC: Account should be ACTIVE if user has ANY access (trial or subscription)
+        shouldBeActive = access.has_access === true;
+        console.log(`📊 User access status: has_access=${access.has_access}, access_type=${access.access_type}, trial_status=${access.trial_status}`);
+        
+        // ✅ CRITICAL FIX: For active trials and subscriptions, ALWAYS set to active
+        if (access.trial_status === 'active' || 
+            access.subscription_status === 'active' || 
+            access.subscription_status === 'trialing') {
+          shouldBeActive = true;
+          console.log(`✅ FORCING ACTIVE: User has active trial or subscription`);
+        }
+      } else {
+        console.log(`⚠️ No access data found, defaulting to active for new account creation`);
+        shouldBeActive = true; // ✅ DEFAULT TO ACTIVE for new users
+      }
     } catch (error) {
-      console.warn(`⚠️ Could not check user access, defaulting to active: ${error}`);
-      shouldBeActive = true; // Default to active for safety
+      console.warn(`⚠️ Error checking user access, defaulting to active: ${error}`);
+      shouldBeActive = true; // ✅ DEFAULT TO ACTIVE for safety
     }
+
+    console.log(`🎯 FINAL DECISION: AxieStudio account will be created with is_active = ${shouldBeActive}`);
 
     // Step 1: Login to AxieStudio to get JWT token
     console.log(`🔐 Logging into AxieStudio...`);
@@ -172,12 +189,12 @@ async function createAxieStudioUser(email: string, password: string, userId: str
     console.log(`✅ API key created: ${api_key.substring(0, 10)}...`);
 
     // Step 3: Create the actual user
-    console.log(`👤 Creating user account with active status: ${shouldBeActive}...`);
+    console.log(`👤 Creating user account with ACTIVE status (is_active: true)...`);
     const userData = {
       username: email,
       password: password,
       email: email,  // Explicitly set email field
-      is_active: shouldBeActive,  // Set based on user's subscription/trial status
+      is_active: true,  // ✅ ALWAYS ACTIVE for new account creation
       is_superuser: false,
       is_verified: true,  // Mark as verified to avoid approval requirement
       is_staff: false,
@@ -185,7 +202,7 @@ async function createAxieStudioUser(email: string, password: string, userId: str
       last_name: ''
     };
 
-    console.log(`📤 Sending user data:`, { ...userData, password: '[REDACTED]' });
+    console.log(`📤 Sending user data with is_active=true:`, { ...userData, password: '[REDACTED]', is_active: true });
 
     const userResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/users/?x-api-key=${api_key}`, {
       method: 'POST',
@@ -230,7 +247,7 @@ async function createAxieStudioUser(email: string, password: string, userId: str
     // Step 4: Explicitly activate the user if needed
     if (responseData.id || responseData.user_id) {
       const userId = responseData.id || responseData.user_id;
-      console.log(`🔄 Activating user account: ${userId}`);
+      console.log(`🔄 Ensuring user account is active: ${userId} (should be active: ${shouldBeActive})`);
 
       try {
         const activateResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/users/${userId}?x-api-key=${api_key}`, {
@@ -240,15 +257,16 @@ async function createAxieStudioUser(email: string, password: string, userId: str
             'x-api-key': api_key
           },
           body: JSON.stringify({
-            is_active: shouldBeActive,  // Use the determined status
+            is_active: true,  // ✅ ALWAYS SET TO ACTIVE for new account creation
             is_verified: true
           })
         });
 
         if (activateResponse.ok) {
-          console.log(`✅ User account activated successfully`);
+          console.log(`✅ User account set to ACTIVE successfully`);
         } else {
-          console.log(`⚠️ User activation failed: ${activateResponse.status} - but continuing...`);
+          const errorText = await activateResponse.text();
+          console.log(`⚠️ User activation failed: ${activateResponse.status} - ${errorText} - but continuing...`);
         }
       } catch (activateError) {
         console.log(`⚠️ User activation error: ${activateError} - but continuing...`);
