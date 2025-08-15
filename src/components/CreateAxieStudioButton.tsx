@@ -134,7 +134,7 @@ export function CreateAxieStudioButton({ className = '', onAccountCreated }: Cre
         console.log('✅ AxieStudio account already exists!');
         setError(`🎉 EXCELLENT! Your AxieStudio account is already created and ready to use!
 
-🔗 Please visit: ${import.meta.env.VITE_AXIESTUDIO_APP_URL}/login
+🔗 Please visit: ${import.meta.env.VITE_AXIESTUDIO_APP_URL || 'your-axiestudio-url'}/login
 
 ✅ You can now access all your AI workflows and tools directly.`);
 
@@ -197,7 +197,7 @@ Please resubscribe to continue using AxieStudio features.`;
       if (error.message.includes('username is unavailable') || error.message.includes('already exists')) {
         userMessage = `🎉 EXCELLENT! Your AxieStudio account is already created and ready to use!
 
-🔗 Please visit: ${import.meta.env.VITE_AXIESTUDIO_APP_URL || 'https://flow.axiestudio.se'}/login
+🔗 Please visit: ${import.meta.env.VITE_AXIESTUDIO_APP_URL || 'your-axiestudio-url'}/login
 
 ✅ You can now access all your AI workflows and tools directly.`;
 
@@ -323,7 +323,7 @@ Please resubscribe to continue using AxieStudio features.`;
                             🔗 CLICK TO ACCESS YOUR ACCOUNT:
                           </p>
                           <a
-                            href={`${import.meta.env.VITE_AXIESTUDIO_APP_URL}/login`}
+                            href={`${import.meta.env.VITE_AXIESTUDIO_APP_URL || 'your-axiestudio-url'}/login`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 rounded-none font-bold hover:bg-gray-800 transition-colors uppercase tracking-wide text-sm"
