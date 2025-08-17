@@ -1,146 +1,134 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { useUnifiedAccess } from './useUnifiedAccess';
 
 export interface TrialInfo {
   user_id: string;
   trial_start_date: string;
   trial_end_date: string;
-  trial_status: 'active' | 'expired' | 'converted_to_paid' | 'scheduled_for_deletion' | 'canceled';
+  trial_status: 'active' | 'expired' | 'converted_to_paid' | 'scheduled_for_deletion' | 'canceled' | 'not_eligible';
   deletion_scheduled_at: string | null;
   seconds_remaining: number;
   days_remaining: number;
+  is_returning_user: boolean;
+  trial_allowed: boolean;
 }
 
 export function useTrialStatus() {
   const { user } = useAuth();
+  const {
+    access,
+    loading: accessLoading,
+    getSecureTrialRemaining,
+    ensureCorrectTrialDates
+  } = useUnifiedAccess();
+
   const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) {
+  // Get secure trial information using new unified system
+  const getTrialInfo = useCallback(async () => {
+    if (!user?.id) {
       setTrialInfo(null);
       setLoading(false);
       return;
     }
 
-    const fetchTrialInfo = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        console.log('🔄 Fetching trial info for user:', user.id);
+      console.log('🔄 Getting secure trial info for user:', user.id);
 
-        // Try the view first
-        const { data, error: fetchError } = await supabase
-          .from('user_trial_info')
-          .select('*')
-          .maybeSingle();
+      // Use the new secure trial calculation
+      const secureTrialData = await getSecureTrialRemaining();
 
-        if (data && !fetchError) {
-          console.log('✅ Successfully fetched from user_trial_info view:', data);
-          setTrialInfo(data);
-          return;
-        }
-
-        console.log('⚠️ user_trial_info view failed, trying base table:', fetchError);
-
-        // Fallback: Query the base table directly
-        const { data: trialData, error: trialError } = await supabase
-          .from('user_trials')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (trialError) {
-          throw trialError;
-        }
-
-        if (trialData) {
-          // Calculate remaining time manually from database trial_end_date
-          const trialEndDate = new Date(trialData.trial_end_date);
-          const now = new Date();
-          const secondsRemaining = trialEndDate > now ? Math.floor((trialEndDate.getTime() - now.getTime()) / 1000) : 0;
-          const daysRemaining = trialEndDate > now ? Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-
-          // VERIFICATION: Also calculate what the time SHOULD be based on user creation
-          const userCreatedAt = new Date(user.created_at);
-          const correctTrialEndDate = new Date(userCreatedAt.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from creation
-          const correctSecondsRemaining = correctTrialEndDate > now ? Math.floor((correctTrialEndDate.getTime() - now.getTime()) / 1000) : 0;
-
-          // Log comparison for debugging
-          console.log('🔍 Trial time verification:', {
-            userCreatedAt: userCreatedAt.toISOString(),
-            databaseTrialEndDate: trialEndDate.toISOString(),
-            correctTrialEndDate: correctTrialEndDate.toISOString(),
-            databaseSecondsRemaining: secondsRemaining,
-            correctSecondsRemaining: correctSecondsRemaining,
-            differenceInSeconds: Math.abs(secondsRemaining - correctSecondsRemaining),
-            isAccurate: Math.abs(secondsRemaining - correctSecondsRemaining) < 60 // Within 1 minute tolerance
-          });
-
-          const enrichedData = {
-            ...trialData,
-            seconds_remaining: secondsRemaining,
-            days_remaining: daysRemaining,
-            // Add verification data
-            user_created_at: userCreatedAt.toISOString(),
-            correct_trial_end_date: correctTrialEndDate.toISOString(),
-            is_timer_accurate: Math.abs(secondsRemaining - correctSecondsRemaining) < 60
-          };
-
-          console.log('✅ Successfully fetched from user_trials table:', enrichedData);
-          setTrialInfo(enrichedData);
-        } else {
-          setTrialInfo(null);
-        }
-      } catch (err) {
-        console.error('Error fetching trial info:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch trial info');
-        setTrialInfo(null);
-      } finally {
-        setLoading(false);
+      if (!secureTrialData) {
+        setError('Failed to get trial information');
+        return;
       }
-    };
 
-    fetchTrialInfo();
+      // Convert to TrialInfo format
+      const trialInfo: TrialInfo = {
+        user_id: user.id,
+        trial_start_date: secureTrialData.trial_start_date || access?.trial_start_date || '',
+        trial_end_date: secureTrialData.trial_end_date || access?.trial_end_date || '',
+        trial_status: secureTrialData.trial_status || 'expired',
+        deletion_scheduled_at: null, // Will be set by subscription system
+        seconds_remaining: secureTrialData.seconds_remaining || 0,
+        days_remaining: secureTrialData.days_remaining || 0,
+        is_returning_user: secureTrialData.is_returning_user || false,
+        trial_allowed: secureTrialData.trial_allowed || false
+      };
 
-    // Set up real-time subscription for trial updates
-    const subscription = supabase
-      .channel('trial_updates')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'user_trials',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        () => {
-          fetchTrialInfo();
-        }
-      )
-      .subscribe();
+      console.log('✅ Secure trial info retrieved:', trialInfo);
+      setTrialInfo(trialInfo);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [user]);
+    } catch (err) {
+      console.error('❌ Error getting secure trial info:', err);
+      setError(err instanceof Error ? err.message : 'Failed to get trial info');
+      setTrialInfo(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, getSecureTrialRemaining, access]);
 
-  const isTrialActive = trialInfo?.trial_status === 'active' && trialInfo?.days_remaining > 0;
-  const isTrialExpired = trialInfo?.trial_status === 'expired' || (trialInfo?.days_remaining === 0 && trialInfo?.trial_status === 'active');
-  const isScheduledForDeletion = trialInfo?.trial_status === 'scheduled_for_deletion';
-  const hasConvertedToPaid = trialInfo?.trial_status === 'converted_to_paid';
-  const isCanceled = trialInfo?.trial_status === 'canceled';
+  // Initialize trial info
+  useEffect(() => {
+    if (user?.id && !accessLoading) {
+      getTrialInfo();
+    }
+  }, [user?.id, accessLoading, getTrialInfo]);
+
+  // Update trial info when unified access changes
+  useEffect(() => {
+    if (access && user?.id) {
+      const trialInfo: TrialInfo = {
+        user_id: user.id,
+        trial_start_date: access.trial_start_date || '',
+        trial_end_date: access.trial_end_date || '',
+        trial_status: access.trial_status || 'expired',
+        deletion_scheduled_at: null,
+        seconds_remaining: access.trial_seconds_remaining || 0,
+        days_remaining: access.trial_days_remaining || 0,
+        is_returning_user: access.is_returning_user || false,
+        trial_allowed: !access.is_returning_user
+      };
+
+      setTrialInfo(trialInfo);
+      setLoading(false);
+    }
+  }, [access, user]);
 
   return {
     trialInfo,
-    loading,
+    loading: loading || accessLoading,
     error,
-    isTrialActive,
-    isTrialExpired,
-    isScheduledForDeletion,
-    hasConvertedToPaid,
-    isCanceled,
+    getTrialInfo,
+
+    // Computed properties using new unified system
+    isTrialActive: trialInfo?.trial_status === 'active',
+    isTrialExpired: trialInfo?.trial_status === 'expired',
+    isTrialNotEligible: trialInfo?.trial_status === 'not_eligible',
+    isReturningUser: trialInfo?.is_returning_user || false,
+    trialAllowed: trialInfo?.trial_allowed || false,
+    daysRemaining: trialInfo?.days_remaining || 0,
+    secondsRemaining: trialInfo?.seconds_remaining || 0,
+    trialEndDate: trialInfo?.trial_end_date,
+    trialStartDate: trialInfo?.trial_start_date,
+    isDeletionScheduled: !!trialInfo?.deletion_scheduled_at,
+
+    // Enhanced properties from unified access
+    hasAccess: access?.has_access || false,
+    accessType: access?.access_type || 'expired',
+    canCreateAxieStudio: access?.can_create_axiestudio_account || false,
+    subscriptionStatus: access?.subscription_status || 'none',
+
+    // Legacy compatibility
+    isScheduledForDeletion: trialInfo?.trial_status === 'scheduled_for_deletion',
+    hasConvertedToPaid: trialInfo?.trial_status === 'converted_to_paid',
+    isCanceled: trialInfo?.trial_status === 'canceled'
   };
 }

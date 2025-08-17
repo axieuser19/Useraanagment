@@ -396,47 +396,48 @@ Deno.serve(async (req) => {
         );
       }
 
-      // 🚨 NEW: Check if user has active access before allowing account creation
-      console.log(`🔍 Checking access for user: ${user.email}`);
+      // 🚨 BULLETPROOF: Use unified access control system
+      console.log(`🔍 Validating security for user: ${user.email}`);
 
-      const { data: accessData, error: accessError } = await supabase.rpc('get_user_access_level', {
-        p_user_id: user.id
+      const { data: securityValidation, error: securityError } = await supabase.rpc('validate_user_security', {
+        p_user_id: user.id,
+        p_action: 'axiestudio_creation'
       });
 
-      if (accessError) {
-        console.error('❌ Error checking user access:', accessError);
+      if (securityError) {
+        console.error('❌ Security validation failed:', securityError);
         return new Response(
           JSON.stringify({
-            error: 'Unable to verify account access. Please try again.',
-            code: 'ACCESS_CHECK_FAILED'
+            error: 'Security validation failed. Please try again.',
+            code: 'SECURITY_CHECK_FAILED'
           }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const userAccess = accessData?.[0];
-      console.log('🔍 User access status:', userAccess);
+      console.log('🔍 Security validation result:', securityValidation);
 
-      // Check if user has active access (trial or subscription)
-      if (!userAccess?.has_access ||
-          userAccess?.trial_status === 'expired' ||
-          userAccess?.trial_status === 'scheduled_for_deletion') {
+      // Check if action is allowed
+      if (!securityValidation.allowed) {
+        console.log(`❌ Access denied for user ${user.email}: ${securityValidation.threat_level} threat level`);
 
-        console.log(`❌ Access denied for user ${user.email}: No active trial or subscription`);
+        const accessInfo = securityValidation.access_info;
 
         return new Response(
           JSON.stringify({
-            error: 'AxieStudio account creation requires an active subscription or trial. Please subscribe to continue.',
+            error: securityValidation.warnings?.[0] || 'AxieStudio account creation not allowed',
             code: 'ACCESS_REQUIRED',
-            has_access: false,
-            trial_status: userAccess?.trial_status || 'unknown',
-            subscription_status: userAccess?.subscription_status || 'none'
+            has_access: accessInfo?.has_access || false,
+            trial_status: accessInfo?.trial_status || 'unknown',
+            subscription_status: accessInfo?.subscription_status || 'none',
+            is_returning_user: accessInfo?.is_returning_user || false,
+            threat_level: securityValidation.threat_level
           }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log(`✅ Access verified for user ${user.email}: ${userAccess?.access_type}`);
+      console.log(`✅ Security validation passed for user ${user.email}: ${securityValidation.access_info?.access_type}`);
 
       const result = await createAxieStudioUser(user.email!, password, user.id);
 

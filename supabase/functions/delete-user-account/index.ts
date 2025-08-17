@@ -18,6 +18,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// 🚨 CRITICAL: Deactivate AxieStudio account (ACTIVE = FALSE) BEFORE deletion
+async function deactivateAxieStudioUser(email: string): Promise<string | null> {
+  try {
+    console.log(`🚨 CRITICAL: Setting AxieStudio account ACTIVE = FALSE for: ${email}`);
+
+    const AXIESTUDIO_APP_URL = Deno.env.get('AXIESTUDIO_APP_URL');
+    const AXIESTUDIO_USERNAME = Deno.env.get('AXIESTUDIO_USERNAME');
+    const AXIESTUDIO_PASSWORD = Deno.env.get('AXIESTUDIO_PASSWORD');
+
+    if (!AXIESTUDIO_APP_URL || !AXIESTUDIO_USERNAME || !AXIESTUDIO_PASSWORD) {
+      throw new Error('Missing AxieStudio environment variables');
+    }
+
+    // Step 1: Login to AxieStudio with admin credentials
+    console.log('🔄 Login to AxieStudio with admin credentials');
+    const loginResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/login/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: AXIESTUDIO_USERNAME,
+        password: AXIESTUDIO_PASSWORD
+      })
+    });
+
+    if (!loginResponse.ok) {
+      throw new Error(`AxieStudio login failed: ${loginResponse.status}`);
+    }
+
+    const loginData = await loginResponse.json();
+    const accessToken = loginData.access_token;
+
+    // Step 2: Create API key for user management
+    console.log('🔄 Create API key for user management');
+    const apiKeyResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/api_key/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: `deactivation-${Date.now()}` })
+    });
+
+    if (!apiKeyResponse.ok) {
+      throw new Error(`API key creation failed: ${apiKeyResponse.status}`);
+    }
+
+    const { api_key } = await apiKeyResponse.json();
+
+    // Step 3: Find user by email in AxieStudio
+    console.log('🔄 Find user by email in AxieStudio');
+    const usersResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/users/?x-api-key=${api_key}`);
+
+    if (!usersResponse.ok) {
+      throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+    }
+
+    const usersData = await usersResponse.json();
+    const usersList = usersData.users || usersData;
+    const user = usersList.find((u: any) => u.username === email);
+
+    if (!user) {
+      console.log(`User ${email} not found in AxieStudio, skipping deactivation`);
+      return null;
+    }
+
+    // Step 4: 🚨 CRITICAL: PATCH /api/v1/users/{id} with { "is_active": false }
+    console.log(`🔄 PATCH /api/v1/users/${user.id} with { "is_active": false }`);
+    const deactivateResponse = await fetch(`${AXIESTUDIO_APP_URL}/api/v1/users/${user.id}?x-api-key=${api_key}`, {
+      method: 'PATCH',
+      headers: {
+        'x-api-key': api_key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        is_active: false  // 🚨 CRITICAL: Setting ACTIVE = FALSE
+      })
+    });
+
+    if (!deactivateResponse.ok) {
+      throw new Error(`Failed to deactivate AxieStudio user: ${deactivateResponse.status}`);
+    }
+
+    console.log(`✅ SUCCESS: AxieStudio account DEACTIVATED (ACTIVE = FALSE) for: ${email}`);
+    console.log(`🔒 AxieStudio account is now DISABLED`);
+
+    return user.id; // Return AxieStudio user ID for logging
+  } catch (error) {
+    console.error(`❌ Failed to deactivate AxieStudio user ${email}:`, error);
+    throw error;
+  }
+}
+
 // 🚨 LEGAL COMPLIANCE: Complete AxieStudio account deletion for manual deletion
 async function deleteAxieStudioUserCompletely(email: string): Promise<void> {
   try {
@@ -206,14 +298,19 @@ Deno.serve(async (req) => {
       }
 
       if (userEmail) {
-        await supabase.rpc('record_account_deletion', {
+        // 🚨 CRITICAL: Record deletion history to prevent trial abuse (using secure version)
+        const { data: deletionResult, error: deletionError } = await supabase.rpc('record_account_deletion_secure', {
           p_user_id: user_id,
           p_email: userEmail,
-          p_reason: 'immediate_deletion',
-          p_trial_used: trialUsed,
-          p_trial_completed: trialCompleted
+          p_reason: 'immediate_deletion'
         });
-        console.log('✅ Deletion history recorded - abuse prevention secured');
+
+        if (deletionError) {
+          console.error('❌ Failed to record deletion history:', deletionError);
+          // Continue anyway - user still has right to delete account
+        } else {
+          console.log('✅ Deletion history recorded - trial abuse prevention secured');
+        }
       } else {
         throw new Error('Could not retrieve user email for deletion history');
       }
@@ -231,16 +328,73 @@ Deno.serve(async (req) => {
       );
     }
 
-    // STEP 1.5: 🚨 LEGAL COMPLIANCE - Complete AxieStudio Account Deletion
+    // STEP 1.5: 🚨 CRITICAL: Setting AxieStudio account ACTIVE = FALSE
+    let axiestudioUserId: string | null = null;
     try {
-      console.log('🔄 Deleting AxieStudio account (legal compliance)...');
+      console.log('🚨 CRITICAL: Setting AxieStudio account ACTIVE = FALSE');
 
       if (userEmail) {
+        // Log deactivation attempt
+        await supabase.rpc('log_axiestudio_operation', {
+          p_user_id: user_id,
+          p_user_email: userEmail,
+          p_action: 'deactivation_attempt'
+        });
+
+        // FIRST: Deactivate the AxieStudio account (ACTIVE = FALSE)
+        axiestudioUserId = await deactivateAxieStudioUser(userEmail);
+        console.log('✅ SUCCESS: AxieStudio account DEACTIVATED (ACTIVE = FALSE)');
+        console.log('🔒 AxieStudio account is now DISABLED');
+
+        // Update local database status
+        await supabase.rpc('deactivate_local_axiestudio_account', {
+          p_user_id: user_id
+        });
+
+        // Log successful deactivation
+        await supabase.rpc('log_axiestudio_operation', {
+          p_user_id: user_id,
+          p_user_email: userEmail,
+          p_action: 'deactivation_success',
+          p_axiestudio_user_id: axiestudioUserId
+        });
+
+        // THEN: Continue with complete deletion for legal compliance
+        console.log('🔄 Continue with main account deletion');
+
+        // Log deletion attempt
+        await supabase.rpc('log_axiestudio_operation', {
+          p_user_id: user_id,
+          p_user_email: userEmail,
+          p_action: 'deletion_attempt',
+          p_axiestudio_user_id: axiestudioUserId
+        });
+
         await deleteAxieStudioUserCompletely(userEmail);
         console.log('✅ AxieStudio account completely deleted (legal compliance)');
+
+        // Log successful deletion
+        await supabase.rpc('log_axiestudio_operation', {
+          p_user_id: user_id,
+          p_user_email: userEmail,
+          p_action: 'deletion_success',
+          p_axiestudio_user_id: axiestudioUserId
+        });
       }
     } catch (error) {
-      console.warn('⚠️ AxieStudio deletion failed (non-critical):', error);
+      console.warn('⚠️ AxieStudio operations failed (non-critical):', error);
+
+      // Log the failure
+      if (userEmail) {
+        await supabase.rpc('log_axiestudio_operation', {
+          p_user_id: user_id,
+          p_user_email: userEmail,
+          p_action: 'deletion_failed',
+          p_axiestudio_user_id: axiestudioUserId,
+          p_error_message: error.message
+        });
+      }
+
       // Continue with deletion even if AxieStudio fails - user still has right to delete main account
     }
 
